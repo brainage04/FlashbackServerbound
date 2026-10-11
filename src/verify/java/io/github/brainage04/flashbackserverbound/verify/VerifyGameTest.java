@@ -7,11 +7,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.TestInput;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
@@ -23,7 +25,7 @@ import org.lwjgl.glfw.GLFW;
  * {@code <out>/sample.zip} back. Playback must reach the replay's last tick without Flashback failing.
  */
 public final class VerifyGameTest implements FabricClientGameTest {
-    private static final int TIMEOUT_TICKS = 2400;
+    private static final int TIMEOUT_TICKS = 1200;
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -97,17 +99,16 @@ public final class VerifyGameTest implements FabricClientGameTest {
 
     private static void play(ClientGameTestContext context, Path replay, Path report) throws IOException {
         context.runOnClient(client -> Flashback.openReplayWorld(replay));
-        context.waitFor(client -> {
-            ReplayServer server = Flashback.getReplayServer();
-            return server != null && server.isReady() && client.player != null && client.level != null;
-        }, TIMEOUT_TICKS);
+        waitStep(context, report, "the replay server", client -> Flashback.getReplayServer() != null);
+        waitStep(context, report, "the replay server's first tick", client -> Flashback.getReplayServer().isReady());
+        waitStep(context, report, "the replay viewer in the world", client -> client.player != null && client.level != null);
         int total = context.computeOnClient(client -> Flashback.getReplayServer().getTotalReplayTicks());
         context.runOnClient(client -> Flashback.getReplayServer().replayPaused = false);
         context.waitTicks(60);
         int played = context.computeOnClient(client -> Flashback.getReplayServer().getReplayTick());
         context.runOnClient(client -> Flashback.getReplayServer().goToReplayTick(total));
-        context.waitFor(client -> Flashback.getReplayServer() != null
-                && Flashback.getReplayServer().getReplayTick() >= total, TIMEOUT_TICKS);
+        waitStep(context, report, "the replay's last tick", client -> Flashback.getReplayServer() != null
+                && Flashback.getReplayServer().getReplayTick() >= total);
         boolean inReplay = context.computeOnClient(client -> Flashback.isInReplay());
         int end = context.computeOnClient(client -> Flashback.getReplayServer().getReplayTick());
         Path screenshot = context.takeScreenshot(report.getFileName().toString().replace(".txt", ""));
@@ -124,6 +125,38 @@ public final class VerifyGameTest implements FabricClientGameTest {
             client.disconnectWithProgressScreen();
             client.gui.setScreen(new TitleScreen());
         });
-        context.waitFor(client -> client.level == null && !Flashback.isInReplay(), TIMEOUT_TICKS);
+        waitStep(context, report, "the title screen", client -> client.level == null && !Flashback.isInReplay());
+    }
+
+    /** Waits for {@code done}; on a timeout, writes what the client and the replay server were doing to the report. */
+    private static void waitStep(ClientGameTestContext context, Path report, String step, Predicate<Minecraft> done)
+            throws IOException {
+        try {
+            context.waitFor(done, TIMEOUT_TICKS);
+        } catch (AssertionError timeout) {
+            String state = context.computeOnClient(VerifyGameTest::describe);
+            String screenshot;
+            try {
+                screenshot = context.takeScreenshot("timeout").toString();
+            } catch (RuntimeException | AssertionError e) {
+                screenshot = "failed: " + e;
+            }
+            String text = "timed out waiting for " + step + "\n" + state + "screenshot " + screenshot + "\n";
+            Files.writeString(report, text);
+            throw new AssertionError(text, timeout);
+        }
+    }
+
+    private static String describe(Minecraft client) {
+        ReplayServer server = Flashback.getReplayServer();
+        return "screen " + (client.gui.screen() == null ? "none" : client.gui.screen().getClass().getName())
+                + "\nclient paused " + client.isPaused()
+                + "\nsingleplayer server " + client.getSingleplayerServer()
+                + "\nreplay server " + (server == null ? "none" : "ready " + server.isReady() + ", running "
+                        + server.isRunning() + ", server ticks " + server.getTickCount() + ", replay tick "
+                        + server.getReplayTick() + " of " + server.getTotalReplayTicks() + ", replay paused "
+                        + server.replayPaused)
+                + "\nplayer " + client.player + "\nlevel " + client.level + "\nin replay " + Flashback.isInReplay()
+                + "\n";
     }
 }

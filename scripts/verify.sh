@@ -29,4 +29,4 @@ for _ in $(seq 50); do
 done
 export DISPLAY="$display" ALSOFT_DRIVERS=null
 timeout --kill-after=60 "${VERIFY_TIMEOUT:-40m}" \
-  ./gradlew --no-daemon --console=plain build verifyRecording verifyStockPlayback
+  ./gradlew --no-daemon --console=plain --continue build verifyRecording verifyStockPlayback
