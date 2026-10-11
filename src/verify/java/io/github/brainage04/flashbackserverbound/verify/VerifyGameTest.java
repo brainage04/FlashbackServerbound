@@ -16,6 +16,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.TestInput;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.GenericMessageScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
@@ -122,19 +123,23 @@ public final class VerifyGameTest implements FabricClientGameTest {
         if (played < 20 || end < total || !inReplay) {
             throw new AssertionError("Playback stalled: " + Files.readString(report));
         }
-        // Leave as Flashback's own "Exit replay" does, also from the client's task queue (see openReplayWorld above).
-        // A client that stops ticking never ends a wait; the watchdog then records where every thread is.
+        // Leave the way the framework closes its own worlds: disconnect(Screen, boolean) from a GameTest task is run
+        // by the framework after the task, at a point where the server thread can still serve the client's blocking
+        // stop request (called from anywhere else, the client blocks on the server while the server waits for the
+        // client's next tick). A client that stops ticking never ends a wait; the watchdog then records where every
+        // thread is.
         Thread watchdog = Thread.ofPlatform().daemon().start(() -> dumpThreadsAfter(Duration.ofSeconds(60),
                 report.resolveSibling(report.getFileName().toString().replace(".txt", "-exit-threads.txt"))));
-        context.runOnClient(client -> client.schedule(() -> {
+        context.runOnClient(client -> {
+            Component saving = Component.translatable("menu.savingLevel");
             if (client.level != null) {
-                client.level.disconnect(Component.empty());
+                client.level.disconnect(saving);
             }
-            client.disconnectWithProgressScreen();
-            client.gui.setScreen(new TitleScreen());
-        }));
-        waitStep(context, report, "the title screen", client -> client.level == null && !Flashback.isInReplay());
+            client.disconnect(new GenericMessageScreen(saving), false);
+        });
+        waitStep(context, report, "leaving the replay", client -> client.level == null && !Flashback.isInReplay());
         watchdog.interrupt();
+        context.setScreen(TitleScreen::new);
     }
 
     private static void dumpThreadsAfter(Duration delay, Path file) {
