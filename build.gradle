@@ -1,3 +1,4 @@
+import java.time.Duration
 import net.fabricmc.loom.task.prod.ClientProductionRunTask
 
 plugins {
@@ -95,6 +96,8 @@ def verifyDir = layout.buildDirectory.dir('verify')
 tasks.register('verifyRecording', ClientProductionRunTask) {
 	group = 'verification'
 	outputs.upToDateWhen { false }
+	// a client that stops ticking never reaches the GameTest's own (tick-counted) timeouts
+	timeout = Duration.ofMinutes(10)
 	mods.from(configurations.productionMods, configurations.verifyMods, tasks.named('jar'), verifyJar)
 	// headless: a mod loading error ends the run instead of waiting on an error window
 	jvmArgs.addAll('-Xmx2G', '-Djava.awt.headless=true', '-Dfabric.client.gametest',
@@ -108,6 +111,7 @@ tasks.register('verifyRecording', ClientProductionRunTask) {
 tasks.register('verifyStockPlayback', ClientProductionRunTask) {
 	group = 'verification'
 	outputs.upToDateWhen { false }
+	timeout = Duration.ofMinutes(10)
 	mustRunAfter 'verifyRecording'
 	mods.from(configurations.productionMods, configurations.verifyMods, verifyJar)
 	jvmArgs.addAll('-Xmx2G', '-Djava.awt.headless=true', '-Dfabric.client.gametest',

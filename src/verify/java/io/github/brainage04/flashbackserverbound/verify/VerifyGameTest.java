@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.Comparator;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -120,17 +121,18 @@ public final class VerifyGameTest implements FabricClientGameTest {
         if (played < 20 || end < total || !inReplay) {
             throw new AssertionError("Playback stalled: " + Files.readString(report));
         }
-        context.runOnClient(client -> {
+        // Leave as Flashback's own "Exit replay" does, also from the client's task queue (see openReplayWorld above)
+        context.runOnClient(client -> client.schedule(() -> {
             if (client.level != null) {
                 client.level.disconnect(Component.empty());
             }
             client.disconnectWithProgressScreen();
             client.gui.setScreen(new TitleScreen());
-        });
+        }));
         waitStep(context, report, "the title screen", client -> client.level == null && !Flashback.isInReplay());
     }
 
-    /** Waits for {@code done}; on a timeout, writes what the client and the replay server were doing to the report. */
+    /** Waits for {@code done}; on a timeout, adds what the client and the replay server were doing to the report. */
     private static void waitStep(ClientGameTestContext context, Path report, String step, Predicate<Minecraft> done)
             throws IOException {
         try {
@@ -144,7 +146,7 @@ public final class VerifyGameTest implements FabricClientGameTest {
                 screenshot = "failed: " + e;
             }
             String text = "timed out waiting for " + step + "\n" + state + "screenshot " + screenshot + "\n";
-            Files.writeString(report, text);
+            Files.writeString(report, text, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
             throw new AssertionError(text, timeout);
         }
     }
