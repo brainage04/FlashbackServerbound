@@ -20,8 +20,9 @@ fi
 mkdir -p build
 Xvfb "$display" -screen 0 1280x720x24 -nolisten tcp > build/xvfb.log 2>&1 &
 xvfb=$!
-# the clients carry -Dflashbackserverbound.verify=...: stop any still running, then the display
-trap 'pkill -f -- "-Dflashbackserverbound.verify=" 2>/dev/null; kill "$xvfb" 2>/dev/null || true' EXIT
+# the clients carry -Dflashbackserverbound.verify=...: stop any still running, then the display (each step may find
+# nothing to stop, which must not end the trap under set -e)
+trap 'pkill -f -- "-Dflashbackserverbound.verify=" 2>/dev/null || true; kill "$xvfb" 2>/dev/null || true' EXIT
 for _ in $(seq 50); do
   [[ -e "/tmp/.X11-unix/X${display#:}" ]] && break
   sleep 0.2
