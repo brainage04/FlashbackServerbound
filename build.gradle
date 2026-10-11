@@ -33,6 +33,10 @@ configurations {
 	productionMods {
 		transitive = false
 	}
+	// Mods only the verification runs load.
+	verifyMods {
+		transitive = false
+	}
 }
 
 dependencies {
@@ -48,6 +52,8 @@ dependencies {
 
 	productionMods "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 	productionMods "maven.modrinth:flashback:${project.flashback_version}"
+	// Fabric API's JAR leaves the client GameTest module out; the verification mod needs it
+	verifyMods fabricApi.module('fabric-client-gametest-api-v1', project.fabric_api_version)
 }
 
 java {
@@ -89,9 +95,10 @@ def verifyDir = layout.buildDirectory.dir('verify')
 tasks.register('verifyRecording', ClientProductionRunTask) {
 	group = 'verification'
 	outputs.upToDateWhen { false }
-	mods.from(configurations.productionMods, tasks.named('jar'), verifyJar)
-	jvmArgs.addAll('-Xmx2G', '-Dfabric.client.gametest', '-Dfabric.client.gametest.disableNetworkSynchronizer=true',
-			'-Dflashbackserverbound.verify=record')
+	mods.from(configurations.productionMods, configurations.verifyMods, tasks.named('jar'), verifyJar)
+	// headless: a mod loading error ends the run instead of waiting on an error window
+	jvmArgs.addAll('-Xmx2G', '-Djava.awt.headless=true', '-Dfabric.client.gametest',
+			'-Dfabric.client.gametest.disableNetworkSynchronizer=true', '-Dflashbackserverbound.verify=record')
 	jvmArgs.add(verifyDir.map { "-Dflashbackserverbound.verify.out=${it.asFile}".toString() })
 	runDir = verifyDir.map { it.dir('record') }
 	useXVFB = false
@@ -102,9 +109,9 @@ tasks.register('verifyStockPlayback', ClientProductionRunTask) {
 	group = 'verification'
 	outputs.upToDateWhen { false }
 	mustRunAfter 'verifyRecording'
-	mods.from(configurations.productionMods, verifyJar)
-	jvmArgs.addAll('-Xmx2G', '-Dfabric.client.gametest', '-Dfabric.client.gametest.disableNetworkSynchronizer=true',
-			'-Dflashbackserverbound.verify=play')
+	mods.from(configurations.productionMods, configurations.verifyMods, verifyJar)
+	jvmArgs.addAll('-Xmx2G', '-Djava.awt.headless=true', '-Dfabric.client.gametest',
+			'-Dfabric.client.gametest.disableNetworkSynchronizer=true', '-Dflashbackserverbound.verify=play')
 	jvmArgs.add(verifyDir.map { "-Dflashbackserverbound.verify.out=${it.asFile}".toString() })
 	runDir = verifyDir.map { it.dir('stock') }
 	useXVFB = false
