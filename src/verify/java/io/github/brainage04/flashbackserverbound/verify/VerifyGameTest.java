@@ -67,7 +67,8 @@ public final class VerifyGameTest implements FabricClientGameTest {
             input.holdKey(options -> options.keySprint);
             input.holdKeyFor(options -> options.keyUp, 15);
             input.releaseKey(options -> options.keySprint);
-            input.pressKey(options -> options.keyJump);
+            // pressKey's press can be released before the tick ends; held keys are what the input records hold
+            input.holdKeyFor(options -> options.keyJump, 3);
             context.waitTicks(10);
             input.holdKeyFor(options -> options.keyLeft, 10);
             input.holdKeyFor(options -> options.keyShift, 10);
