@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.time.Duration;
 import java.util.Comparator;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -121,7 +122,10 @@ public final class VerifyGameTest implements FabricClientGameTest {
         if (played < 20 || end < total || !inReplay) {
             throw new AssertionError("Playback stalled: " + Files.readString(report));
         }
-        // Leave as Flashback's own "Exit replay" does, also from the client's task queue (see openReplayWorld above)
+        // Leave as Flashback's own "Exit replay" does, also from the client's task queue (see openReplayWorld above).
+        // A client that stops ticking never ends a wait; the watchdog then records where every thread is.
+        Thread watchdog = Thread.ofPlatform().daemon().start(() -> dumpThreadsAfter(Duration.ofSeconds(60),
+                report.resolveSibling(report.getFileName().toString().replace(".txt", "-exit-threads.txt"))));
         context.runOnClient(client -> client.schedule(() -> {
             if (client.level != null) {
                 client.level.disconnect(Component.empty());
@@ -130,6 +134,27 @@ public final class VerifyGameTest implements FabricClientGameTest {
             client.gui.setScreen(new TitleScreen());
         }));
         waitStep(context, report, "the title screen", client -> client.level == null && !Flashback.isInReplay());
+        watchdog.interrupt();
+    }
+
+    private static void dumpThreadsAfter(Duration delay, Path file) {
+        try {
+            Thread.sleep(delay);
+        } catch (InterruptedException finished) {
+            return;
+        }
+        StringBuilder dump = new StringBuilder();
+        Thread.getAllStackTraces().forEach((thread, frames) -> {
+            dump.append(thread).append(' ').append(thread.getState()).append('\n');
+            for (StackTraceElement frame : frames) {
+                dump.append("    at ").append(frame).append('\n');
+            }
+        });
+        try {
+            Files.writeString(file, dump);
+        } catch (IOException ignored) {
+            // the run is failing on its timeout anyway
+        }
     }
 
     /** Waits for {@code done}; on a timeout, adds what the client and the replay server were doing to the report. */
