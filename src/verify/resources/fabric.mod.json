@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "flashback_serverbound_verify",
+  "version": "${version}",
+  "name": "FlashbackServerbound verification",
+  "description": "Client GameTest that records and plays Flashback replays; development only.",
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "fabric-client-gametest": [
+      "io.github.brainage04.flashbackserverbound.verify.VerifyGameTest"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~26.2",
+    "flashback": "*",
+    "fabric-client-gametest-api-v1": "*"
+  }
+}

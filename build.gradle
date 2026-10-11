@@ -1,0 +1,111 @@
+import net.fabricmc.loom.task.prod.ClientProductionRunTask
+
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+	archivesName = project.archives_base_name
+}
+
+repositories {
+	maven {
+		url = 'https://api.modrinth.com/maven'
+		content {
+			includeGroup 'maven.modrinth'
+		}
+	}
+	mavenCentral()
+}
+
+sourceSets {
+	// A client GameTest mod that drives Flashback with and without this mod; never part of the release JAR.
+	verify {
+		compileClasspath += main.compileClasspath + main.output
+	}
+}
+
+configurations {
+	// The mods a player installs beside this one, for the production client runs.
+	productionMods {
+		transitive = false
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	compileOnly "maven.modrinth:flashback:${project.flashback_version}"
+
+	verifyCompileOnly "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	testImplementation platform("org.junit:junit-bom:${project.junit_version}")
+	testImplementation 'org.junit.jupiter:junit-jupiter'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+	productionMods "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	productionMods "maven.modrinth:flashback:${project.flashback_version}"
+}
+
+java {
+	sourceCompatibility = JavaVersion.toVersion(project.java_version)
+	targetCompatibility = JavaVersion.toVersion(project.java_version)
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.release = project.java_version as int
+	options.encoding = 'UTF-8'
+}
+
+tasks.withType(ProcessResources).configureEach {
+	inputs.property 'version', project.version
+	filesMatching('fabric.mod.json') {
+		expand 'version': project.version
+	}
+}
+
+jar {
+	from('LICENSE') {
+		rename { "${it}_${project.archives_base_name}" }
+	}
+}
+
+test {
+	useJUnitPlatform()
+}
+
+def verifyJar = tasks.register('verifyJar', Jar) {
+	archiveClassifier = 'verify'
+	from sourceSets.verify.output
+}
+
+def verifyDir = layout.buildDirectory.dir('verify')
+
+// Records a singleplayer session with Flashback and this mod, checks the records in the saved replay, plays it back
+// and keeps it as build/verify/sample.zip.
+tasks.register('verifyRecording', ClientProductionRunTask) {
+	group = 'verification'
+	outputs.upToDateWhen { false }
+	mods.from(configurations.productionMods, tasks.named('jar'), verifyJar)
+	jvmArgs.addAll('-Xmx2G', '-Dfabric.client.gametest', '-Dfabric.client.gametest.disableNetworkSynchronizer=true',
+			'-Dflashbackserverbound.verify=record')
+	jvmArgs.add(verifyDir.map { "-Dflashbackserverbound.verify.out=${it.asFile}".toString() })
+	runDir = verifyDir.map { it.dir('record') }
+	useXVFB = false
+}
+
+// Plays build/verify/sample.zip in Flashback without this mod installed.
+tasks.register('verifyStockPlayback', ClientProductionRunTask) {
+	group = 'verification'
+	outputs.upToDateWhen { false }
+	mustRunAfter 'verifyRecording'
+	mods.from(configurations.productionMods, verifyJar)
+	jvmArgs.addAll('-Xmx2G', '-Dfabric.client.gametest', '-Dfabric.client.gametest.disableNetworkSynchronizer=true',
+			'-Dflashbackserverbound.verify=play')
+	jvmArgs.add(verifyDir.map { "-Dflashbackserverbound.verify.out=${it.asFile}".toString() })
+	runDir = verifyDir.map { it.dir('stock') }
+	useXVFB = false
+}

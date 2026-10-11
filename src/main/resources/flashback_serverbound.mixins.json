@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "io.github.brainage04.flashbackserverbound.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "ConnectionMixin",
+    "EntityMixin",
+    "KeyMappingMixin",
+    "RecorderMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

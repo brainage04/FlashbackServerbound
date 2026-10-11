@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "flashback_serverbound",
+  "version": "${version}",
+  "name": "FlashbackServerbound",
+  "description": "Adds the client's own side to Flashback recordings: every packet it sends and its input each tick. The replays still play in Flashback without this mod.",
+  "authors": [
+    "brainage04"
+  ],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "io.github.brainage04.flashbackserverbound.FlashbackServerbound"
+    ]
+  },
+  "mixins": [
+    "flashback_serverbound.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~26.2",
+    "java": ">=25",
+    "flashback": ">=0.43.6 <0.44"
+  }
+}
