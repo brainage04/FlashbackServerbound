@@ -98,7 +98,9 @@ public final class VerifyGameTest implements FabricClientGameTest {
     }
 
     private static void play(ClientGameTestContext context, Path replay, Path report) throws IOException {
-        context.runOnClient(client -> Flashback.openReplayWorld(replay));
+        // From the client's own task queue: inside a GameTest task the framework defers world loading until the
+        // task ends, after Flashback's replay server settings for that load are gone, and a plain server starts
+        context.runOnClient(client -> client.schedule(() -> Flashback.openReplayWorld(replay)));
         waitStep(context, report, "the replay server", client -> Flashback.getReplayServer() != null);
         waitStep(context, report, "the replay server's first tick", client -> Flashback.getReplayServer().isReady());
         waitStep(context, report, "the replay viewer in the world", client -> client.player != null && client.level != null);
