@@ -3,7 +3,7 @@
 ```sh
 heavy status
 heavy --quick --label flashbackserverbound-build -- ./gradlew --no-daemon build
-heavy --label flashbackserverbound-clients -- xvfb-run -a env ALSOFT_DRIVERS=null LIBGL_ALWAYS_SOFTWARE=1 ./gradlew --no-daemon -Pfabricmoddingconventions.devClientOptions=/nonexistent build verifyRecording verifyStockPlayback
+heavy --label flashbackserverbound-clients -- xvfb-run -a env ALSOFT_DRIVERS=null LIBGL_ALWAYS_SOFTWARE=1 ./gradlew --no-daemon build verifyRecording verifyStockPlayback
 ```
 
 The production client runs use Flashback 0.43.6 and Fabric API, driven by a client GameTest (`src/verify`, never part of the release JAR):
