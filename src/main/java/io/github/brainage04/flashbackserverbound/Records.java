@@ -29,7 +29,6 @@ public final class Records {
     public static final int STATE_CONFIGURATION = 1;
     public static final int STATE_LOGIN = 2;
 
-    /** Keys as held (key bindings). */
     public static final int F_FORWARD = 1;
     public static final int F_BACK = 1 << 1;
     public static final int F_LEFT = 1 << 2;
@@ -40,11 +39,8 @@ public final class Records {
     public static final int F_ATTACK = 1 << 7;
     public static final int F_USE = 1 << 8;
     public static final int F_PICK = 1 << 9;
-    /** A screen is open: keys go to it. */
     public static final int F_SCREEN = 1 << 10;
-    /** No player in a world: the other fields are meaningless. */
     public static final int F_NO_PLAYER = 1 << 11;
-    /** What the tick's movement input applied, and the player's state at the end of the tick. */
     public static final int F_JUMPING = 1 << 12;
     public static final int F_SHIFTING = 1 << 13;
     public static final int F_SPRINTING = 1 << 14;
@@ -68,7 +64,6 @@ public final class Records {
         return out.toByteArray();
     }
 
-    /** {@code packet}: the packet id (VarInt) and body as encoded for the wire. */
     public static byte[] packet(int state, byte[] packet) {
         byte[] record = new byte[2 + packet.length];
         record[0] = PACKET;

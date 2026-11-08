@@ -21,12 +21,6 @@ import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
-/**
- * Drives Flashback in a real client. {@code -Dflashbackserverbound.verify=record} (this mod installed): plays a short
- * singleplayer session while Flashback records, checks the serverbound records in the saved replay, plays the
- * replay back and keeps it as {@code <out>/sample.zip}. {@code play} (this mod not installed): plays
- * {@code <out>/sample.zip} back. Playback must reach the replay's last tick without Flashback failing.
- */
 public final class VerifyGameTest implements FabricClientGameTest {
     private static final int TIMEOUT_TICKS = 1200;
 
@@ -162,7 +156,6 @@ public final class VerifyGameTest implements FabricClientGameTest {
         }
     }
 
-    /** Waits for {@code done}; on a timeout, adds what the client and the replay server were doing to the report. */
     private static void waitStep(ClientGameTestContext context, Path report, String step, Predicate<Minecraft> done)
             throws IOException {
         try {

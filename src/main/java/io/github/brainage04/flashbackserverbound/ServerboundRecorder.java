@@ -22,10 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Writes the serverbound records ({@link Records}) into the replay Flashback is recording, as {@link ServerboundAction}s
- * submitted to Flashback's writer.
- *
- * <p>Everything is written from the client thread, between Flashback's own writes: a packet sent from another
+ * Everything is written from the client thread, between Flashback's own writes: a packet sent from another
  * thread (keep-alive replies are sent from the network thread) is encoded there and written on the client thread's
  * next task run, between ticks. Flashback writes a whole tick (and any new chunk file with its snapshot) inside its
  * end-of-tick call, so a record never lands inside a snapshot or before a chunk file's first action.
@@ -47,7 +44,6 @@ public final class ServerboundRecorder {
     private ServerboundRecorder() {
     }
 
-    /** A packet the client is sending, on any thread, with the protocol it is sent in. */
     public static void sent(Packet<?> packet, ProtocolInfo<?> protocol) {
         Recorder recorder = Flashback.RECORDER;
         if (recorder == null || !recorder.readyToWrite()) {
@@ -80,14 +76,12 @@ public final class ServerboundRecorder {
         }
     }
 
-    /** Flashback starts a client tick (client thread). */
     public static void tickStarted(Recorder recorder) {
         write(recorder, Records.tickStart());
     }
 
     /**
-     * Flashback ends a client tick (client thread): the tick's input, written when Flashback writes the tick. On
-     * {@code close} (the recording finishing between ticks) no tick was played and nothing is written.
+     * On {@code close} (the recording finishing between ticks) no tick was played and nothing is written.
      */
     public static void tickEnded(Recorder recorder, boolean close) {
         int attacks = attackClicks;
@@ -109,13 +103,11 @@ public final class ServerboundRecorder {
         }
     }
 
-    /** The mouse turned the local player (client thread), in degrees as applied. */
     public static void turned(float yaw, float pitch) {
         turnYaw += yaw;
         turnPitch += pitch;
     }
 
-    /** A click of a key binding was handled (client thread). */
     public static void clicked(KeyMapping key) {
         Options options = Minecraft.getInstance().options;
         if (key == options.keyAttack) {

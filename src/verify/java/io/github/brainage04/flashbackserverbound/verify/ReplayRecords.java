@@ -91,7 +91,6 @@ final class ReplayRecords {
         }
     }
 
-    /** True for an INPUT record. */
     private boolean record(ByteBuffer record) {
         switch (record.get()) {
             case 0 -> {
